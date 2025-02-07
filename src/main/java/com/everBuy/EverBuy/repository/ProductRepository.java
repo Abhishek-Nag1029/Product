@@ -12,12 +12,24 @@ import java.util.Optional;
 public interface ProductRepository extends JpaRepository<Product, Integer> {
 //    List<Product> findAll();
     List<Product> findBymid(long mid);
+
     Product findBypid(long pid);
+
     Optional<Product> findByPidAndMid(long pid, long mid);
+
     @Query("SELECT p.mid FROM Product p WHERE p.pid = :pid") // Fetch only mid
     Long findMidByPid(@Param("pid") long pid);
 
+    @Query("SELECT (p.stock + p.price + p.rating + " +
+            "(SELECT COUNT(p2) FROM Product p2 WHERE p2.mid = p.mid)) " +
+            "FROM Product p WHERE p.pid = :pid")
+    Float findSumOfProductDetails(@Param("pid") Long pid);
 
+    @Query("SELECT p.pid FROM Product p WHERE p.productIdentifier = :query")
+    List<Long> findByIdentifier(@Param("query") String query);
+
+    @Query("SELECT p.productIdentifier FROM Product p WHERE p.pid = :pid")
+    String findIdentifierBypId(@Param("pid") Long pid);
 }
 
 

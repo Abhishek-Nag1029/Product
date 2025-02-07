@@ -5,10 +5,17 @@ import com.everBuy.EverBuy.repository.ProductRepository;
 //import com.everBuy.EverBuy.repository.ProductSearchRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ProductService {
+
+    @Autowired
+    private RestTemplate restTemplate;
 
     @Autowired
     private ProductRepository productRepository;
@@ -83,6 +90,60 @@ public class ProductService {
 //        String normalizedQuery = query.toLowerCase().replaceAll("\\s+", ""); // Normalize the search query
 //        return productSearchRepository.findByProductIdentifier(normalizedQuery); // Elasticsearch search
 //    }
+
+
+//     - Number of products the merchant offers to sell
+//     - Number of products sold (number of orders created)
+//     - Current stock of the product
+//     - Merchant rating
+//     - Price of the products by various merchants
+//     - Customer reviews/rating given to the products of various merchants
+
+    public Integer totalMerchantOrder(Long merchantId) {
+        String url = "http://10.65.1.185:8098/orders/merchant/"+merchantId; // Use actual API URL
+
+        Integer totalOrder = restTemplate.getForObject(url, Integer.class, merchantId);
+        return totalOrder;
+    }
+
+
+    public List<Long> searchSeller(Long productId) {
+//        String normalizedQuery = query.toLowerCase().replaceAll("\\s+", "");
+        String query = productRepository.findIdentifierBypId(productId);
+        List<Long> productIds = productRepository.findByIdentifier(query);
+        Map<Long, Float> merchantScore = new HashMap<>();
+
+        float minTotal = Float.MAX_VALUE, maxTotal = Float.MIN_VALUE;
+
+        Map<Long, Float> merchantRawScores = new HashMap<>();
+
+        for (Long pId : productIds) {
+            Float productDetails = productRepository.findSumOfProductDetails(pId);
+            Long merchantId = productRepository.findMidByPid(pId);
+            Integer totalOrder = totalMerchantOrder(merchantId);
+            Float totalScore = productDetails + totalOrder;
+
+            // Track min/max values
+            minTotal = Math.min(minTotal, totalScore);
+            maxTotal = Math.max(maxTotal, totalScore);
+
+            merchantRawScores.put(merchantId, totalScore);
+        }
+
+        // Normalize values
+        for (Map.Entry<Long, Float> entry : merchantRawScores.entrySet()) {
+            Long merchantId = entry.getKey();
+            Float rawScore = entry.getValue();
+            Float normalizedScore = (rawScore - minTotal) / (maxTotal - minTotal);
+            merchantScore.put(merchantId, normalizedScore);
+        }
+
+        return merchantScore.entrySet().stream()
+                .sorted((a, b) -> Float.compare(b.getValue(), a.getValue())) // Descending order
+                .limit(5)
+                .map(Map.Entry::getKey)
+                .toList();
+    }
 
 
 }

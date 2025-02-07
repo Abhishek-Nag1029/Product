@@ -75,11 +75,10 @@ public class ProductController {
         }
     }
 
-
-//    @GetMapping("/products/search/{query}")
-//    public List<Product> searchProducts(@PathVariable String query) {
-//        return productService.searchProducts(query);  // Calls the service for fuzzy search
-//    }
+    @GetMapping("/products/search/{pId}")
+    public List<Long> searchProducts(@PathVariable Long pId) {
+        return productService.searchSeller(pId);
+    }
 
 
 
